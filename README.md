@@ -22,10 +22,11 @@ To create "objects" (aka actors) on the fly...
 absx > factory builds str as dicepool
 ```
 
-We can now call actions on that actor...
+The above would create an actor with the alias of "str" with "dicepool" as it's class.
+
+With our new actor, we can now call actions on it...
 
 ```
 absx > str rolls d20
 ```
-
 
