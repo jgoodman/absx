@@ -6,7 +6,13 @@ The acronym stands for "Actor Based Syntax".
 
 ## SYNOPSIS
 
-Run bin/absx to start an object oriented console interface. From there, you would declare commands in "noun/verb" fashion (aka actor/action). For example...
+To start an object oriented console interface, run...
+
+```
+bin/absx
+```
+
+From here, you would declare commands in "noun/verb" fashion (aka actor/action). For example...
 
 ```
 absx > console helps
@@ -30,3 +36,8 @@ With our new actor, we can now call actions on it...
 absx > str rolls d20
 ```
 
+You'll begin to notice that actors have state information about them. This can dump this information to the console by running...
+
+```
+absx > str confesses
+```
