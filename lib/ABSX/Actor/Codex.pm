@@ -6,7 +6,7 @@ use warnings;
 use Role::Tiny::With;
 with 'ABSX::Role::Actor';
 
-sub actions { qw(defines) }
+sub core_actions { qw(defines) }
 
 sub defines {
     my ($self, $uuid, $term, $class) = @_;
@@ -24,9 +24,6 @@ sub defines {
     return 1;
 }
 
-sub _uniq {
-    my %seen;
-    grep { not $seen{$_}++ } @_;
-}
+sub _uniq { my %s; grep { not $s{$_}++ } @_ }
 
 1;

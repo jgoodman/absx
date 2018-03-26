@@ -4,6 +4,7 @@ use strict;
 use warnings;
 use JSON;
 use Term::ReadLine;
+use Throw;
 
 use ABSX::Actor::Factory;
 use ABSX::Actor::Stub;
@@ -12,10 +13,7 @@ use Class::Method::Modifiers;
 use Role::Tiny::With;
 with 'ABSX::Role::Actor';
 
-around core_actions => sub {
-    my ($o, $s) = (shift, shift);
-    $o->($s, qw(exits), @_);
-};
+sub core_actions { qw(exits) }
 
 around TO_JSON => sub {
     my ($o, $s) = (shift, shift);
@@ -29,6 +27,7 @@ around TO_JSON => sub {
 
 # TODO move to codex
 my %ALIASES = (
+    _INDEX  => 2,
     console => 0,
     factory => 1,
 );
@@ -42,7 +41,7 @@ my @KEYWORDS = sort grep { not $_seen{$_}++ }
 
 sub loop {
     my $self = shift;
-    $self = $self->new({ actions => [qw(exits helps debugs has sets)] }) unless ref $self;
+    $self = $self->new(@_) unless ref $self;
     while (1) {
         my $line   = $self->term->readline("absx > "); next unless $line; $line =~ s{^\s+}{}; $line =~ s{\s+$}{};
         my @args   = split(/ +/, $line); next unless scalar @args;
@@ -57,6 +56,13 @@ sub loop {
         }
     };
     return $self;
+}
+
+sub add_alias {
+    my ($self, $alias) = @_;
+    throw '-absx: alias already defined' if $ALIASES{$alias};
+    $ALIASES{$alias} = $ALIASES{'_INDEX'}++;
+    push @KEYWORDS, $alias; # TODO uniq?
 }
 
 sub get_actor {

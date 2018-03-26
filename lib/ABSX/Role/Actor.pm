@@ -8,14 +8,26 @@ use Throw;
 sub new {
     my ($class, $ref) = @_;
     my $self = bless(($ref || { }), (ref($class) || $class));
-    $self->{'actions'} = [ $self->core_actions ];
+    my $actions = $self->{actions} || [ $self->_init_actions ];
     return $self;
 }
 
-sub core_actions { shift; qw(confesses commits), @_ }
-sub actions      { my $s = shift; $s->{'actions'} ||= [ $s->core_actions ] }
+sub core_actions { qw() };
+sub role_actions { qw(confesses commits) }
+sub actions      { my $s = shift; $s->{'actions'} ||= [ $s->_init_actions ] }
 sub attribute    { shift->{'attributes'} ||= { } }
 sub class        { (my $c = ref($_[0]) || $_[0]) =~ s/^ABSX::Actor:://g; lc($c) }
+
+sub _init_actions {
+    my $self = shift;
+
+    my @actions;
+    push @actions, map { ref($_) eq 'ARRAY' ? @$_ : $_ } $self->core_actions;
+    push @actions, map { ref($_) eq 'ARRAY' ? @$_ : $_ } $self->role_actions;
+
+    my %seen = ();
+    return grep { not $seen{$_}++ } @actions;
+}
 
 sub exercise {
     my ($self, $action, @args) = @_;
