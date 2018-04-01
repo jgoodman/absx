@@ -13,14 +13,14 @@ use Class::Method::Modifiers;
 use Role::Tiny::With;
 with 'ABSX::Role::Actor';
 
-sub core_actions { qw(exits) }
+sub core_actions { qw(exits saves) }
 
 around TO_JSON => sub {
     my ($o, $s) = (shift, shift);
     my $pretty = $o->($s);
     delete $pretty->{'term'};
     if($pretty->{'actors'}) {
-        $pretty->{'actors'} = [ map { join(':',$_->uuid,$_->class) } @{delete $pretty->{'actors'}} ];
+        $pretty->{'actors'} = [ map { join(':',$_->uuid,$_->class,$_->alias) } @{delete $pretty->{'actors'}} ];
     }
     return $pretty;
 };
@@ -41,10 +41,9 @@ my @KEYWORDS = sort grep { not $_seen{$_}++ }
 
 sub loop {
     my $self = shift;
-    $self = $self->new(@_) unless ref $self;
+    $self = $self->load(@_);
     while (1) {
-        my $line   = $self->term->readline("absx > "); next unless $line; $line =~ s{^\s+}{}; $line =~ s{\s+$}{};
-        my @args   = split(/ +/, $line); next unless scalar @args;
+        my @args   = $self->parse_input($self->term->readline("absx > ")) or next;
         my $alias  = shift(@args) // next;
         my $actor  = $self->get_actor($alias) || do { warn "-absx: $alias: actor not found\n"; next };
         my $action = shift(@args) || do { warn "-absx: $alias: missing action\n";  next }; # TODO run help instead?
@@ -56,6 +55,37 @@ sub loop {
         }
     };
     return $self;
+}
+
+sub load {
+    my $self = shift;
+    $self = $self->new(@_) unless ref $self;
+    my $save = $self->model->load(qw(IF EXISTS));
+    if($save) {
+        my $labels = delete $save->{'actors'};
+        $self->{'actors'} = [ ];
+        %ALIASES = (_INDEX => 0);
+        foreach my $label (@$labels) {
+            print "Loading $label\n";
+            my ($i, $class, $alias) = split(':', $label);
+            my $module = "ABSX::Actor::".ucfirst $class;
+            (my $file  = "$module.pm") =~ s{::}{/}g;
+            require $file;
+            my $s = $module->new({domain => $self->domain, alias => $alias})->model->load;
+            my $child = $module->new($s);
+            $self->add_actor($alias, $child);
+        }
+    }
+    return $self;
+}
+
+sub parse_input {
+    my ($self, $line) = @_;
+    return unless $line;
+    $line =~ s{(?:^\s+|\s+$)}{};
+    #split(/('[^']*')/, $line); # TODO quotes
+    my @args = split(/ +/, $line);
+    return @args;
 }
 
 sub add_alias {
@@ -72,11 +102,19 @@ sub get_actor {
     $self->actors->[$actor_id];
 }
 
+sub add_actor {
+    my ($self, $alias, $child) = @_;
+    $self->actors($child);
+    $self->add_alias($alias);
+    $child->{'domain'} = $self->domain; # FIXME this should be done via accessor
+    return $child;
+}
+
 sub actors {
     my $self = shift;
     my $actors = $self->{'actors'} ||= do {
         $self->uuid(0);
-        my $factory = ABSX::Actor::Factory->new();
+        my $factory = ABSX::Actor::Factory->new({alias => 'factory'});
         $factory->uuid(1);
         [ $self, $factory ];
     };
@@ -124,13 +162,22 @@ ABSX Console, Version 0.1
 
 ACTIONS
 
-  exits              Quit current console app
   helps              Prints this message
   confesses          Dumps this actor's data
+  exits              Quit current console app
+  saves              Writes all actors to storage
 
 END_HELP_MSG
 }
 
+
+sub saves {
+    my ($self) = @_;
+    foreach my $actor (@{$self->actors}) {
+        $actor->{'domain'} = $self->domain;
+        $actor->model->write;
+    }
+}
 
 1;
 __END__

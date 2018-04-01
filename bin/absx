@@ -11,11 +11,17 @@ use Pod::Usage;
 use Getopt::Long;
 
 my %opt;
-GetOptions(\%opt, "help|?", "man")  ||  pod2usage(2);
+my $domain = ($ARGV[0] && $ARGV[0] !~ m/^-/) ? shift : '';
+GetOptions(\%opt, "help|?", "man", "domain=s")  ||  pod2usage(2);
+die "Error: Missing domain option.\n" unless $domain || $opt{'domain'};
+die "Error: Too many variant domains were supplied.\n" if $domain && $opt{'domain'} && (lc($domain) ne lc($opt{'domain'}));
 pod2usage(1)  if ($opt{help});
 pod2usage(-exitval => 0, -verbose => 2)  if ($opt{man});
 
-ABSX::Actor::Console->loop();
+ABSX::Actor::Console->loop({
+    domain => $opt{'domain'} || $domain,
+    alias  => 'console',
+});
 
 __END__
 =head1 NAME
@@ -29,5 +35,6 @@ __END__
 =head1 OPTIONS
 
   -h, --help    Prints this help guide
+  -d, --domain  Domain to load this console under
 
 =cut

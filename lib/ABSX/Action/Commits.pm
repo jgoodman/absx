@@ -7,8 +7,8 @@ use Role::Tiny::With;
 with 'ABSX::Role::Action';
 
 sub commits {
-    my ($actor) = shift;
-    $actor->model->write($actor);
+    my ($actor) = @_;
+    $actor->model->write;
 }
 
 

@@ -4,16 +4,20 @@ use strict;
 use warnings;
 use Role::Tiny;
 use Throw;
+use ABSX::Model;
 
 sub new {
     my ($class, $ref) = @_;
-    my $self = bless(($ref || { }), (ref($class) || $class));
+    $ref      ||= { };
+    $class      = ref($class) if ref($class);
+    my $self    = bless($ref, $class);
     my $actions = $self->{actions} || [ $self->_init_actions ];
     return $self;
 }
 
 sub core_actions { qw() };
 sub role_actions { qw(confesses commits) }
+sub domain       { my $s = shift; $s->{'domain'}  ||= $s->console->domain }
 sub actions      { my $s = shift; $s->{'actions'} ||= [ $s->_init_actions ] }
 sub attribute    { shift->{'attributes'} ||= { } }
 sub class        { (my $c = ref($_[0]) || $_[0]) =~ s/^ABSX::Actor:://g; lc($c) }
@@ -56,7 +60,8 @@ sub uuid {
 
 sub alias {
     my $self = shift;
-    return $self->{'alias'} || join(':',$self->uuid, $self->class);
+    #return $self->{'alias'} || join(':',$self->uuid, $self->class);
+    return $self->{'alias'} || throw '-absx: '.$self->class.': missing alias';
 }
 
 sub console {
@@ -73,16 +78,18 @@ sub TO_JSON {
     }
     return $pretty;
 }
+
 sub json { shift->{'json'} ||= JSON->new->allow_nonref([1])->convert_blessed([1])->canonical([1])->pretty([1]) }
 
 sub storage_driver { shift->{'storage_driver'} ||= $ENV{'STORAGE_DRIVER'} || 'file' }
 
 sub model {
     my $self = shift;
-    return $self->{'model'} ||= do {
-        require ABSX::Model;
-        ABSX::Model->new({ storage_driver => $self->storage_driver });
-    };
+    ABSX::Model->new({
+        domain         => $self->domain,
+        data           => $self->TO_JSON,
+        storage_driver => $self->storage_driver,
+    });
 }
 
 1;
